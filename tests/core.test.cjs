@@ -13,7 +13,7 @@ function boot(localIds = []) {
     const storage = map => ({ getItem: k => map.get(k) ?? null, setItem: (k, v) => map.set(k, v), getState: () => Object.fromEntries(map) });
     const context = {};
     let search = '', fetches = 0, updates = 0;
-    const jq = () => ({ on() {}, val: () => search });
+    const jq = () => ({ on() {}, val: () => search, trigger: () => {host.onNativeInput?.();} });
     jq.fn = {};
     const document = {querySelector: () => null, querySelectorAll: () => [], getElementById: () => null, removeEventListener() {}};
     const host = {document, jQuery: jq, localStorage: storage(local),
@@ -103,6 +103,34 @@ test('version comparison is numeric and rejects malformed values', () => {
     assert.equal(api.compareVersions('1.0.5', '1.1.0'), -1);
     assert.throws(() => api.compareVersions('v1.1', '1.1.0'));
 });
+test('disable restores native pagination before refreshing once, preserving pin storage', () => {
+    const h = boot(['p.png']);
+    let calls = 0;
+    const native = function() {};
+    h.jq.fn.pagination = native;
+    h.jq._data = () => ({ input: [() => {}] });
+    h.host.document.querySelector = () => ({});
+    h.host.onNativeInput = () => {
+        calls++;
+        assert.equal(h.jq.fn.pagination, native);
+        assert.equal(h.local.get(key), '["p.png"]');
+    };
+    h.api.patchPersonaPagination();
+    h.api.destroy();
+    h.api.destroy();
+    assert.equal(calls, 1);
+});
+test('instance handoff skips redundant native refresh', () => {
+    const h = boot();
+    let calls = 0;
+    h.jq.fn.pagination = function() {};
+    h.jq._data = () => ({ input: [() => {}] });
+    h.host.document.querySelector = () => ({});
+    h.host.onNativeInput = () => {calls++;};
+    h.api.patchPersonaPagination();
+    h.api.destroy({refreshNative:false});
+    assert.equal(calls, 0);
+});
 test('update only changes matching nested script and retains identity, data, switches and buttons', () => {
     const {api} = boot();
     const old = { ...pkg, id: 'installed', enabled: false, data: {mySetting: 42}, button: {enabled:false, buttons:[{name:'custom',visible:false}]} };
@@ -130,7 +158,7 @@ test('equal or older versions cause no write', async () => {
     const h = boot();
     await h.api.checkForUpdate();
     assert.deepEqual(h.counts(), {fetches:1, updates:0});
-    const older = {...pkg, version:'1.0.9', content: pkg.content.replace("const SCRIPT_VERSION = '1.1.0';", "const SCRIPT_VERSION = '1.0.9';")};
+    const older = {...pkg, version:'1.0.9', content: pkg.content.replace(`const SCRIPT_VERSION = '${pkg.version}';`, "const SCRIPT_VERSION = '1.0.9';")};
     h.host.fetch = async () => ({ok:true, text:async () => JSON.stringify(older)});
     await h.api.checkForUpdate();
     assert.equal(h.counts().updates, 0);
@@ -141,7 +169,7 @@ test('network error, non-JSON, cancellation and destroyed instance cause no writ
     await h.api.checkForUpdate();
     h.host.fetch = async () => ({ok:true,text:async () => '<html>error</html>'});
     await h.api.checkForUpdate();
-    const newer = {...pkg, version:'1.1.1', content: pkg.content.replace("const SCRIPT_VERSION = '1.1.0';", "const SCRIPT_VERSION = '1.1.1';")};
+    const newer = {...pkg, version:'99.0.0', content: pkg.content.replace(`const SCRIPT_VERSION = '${pkg.version}';`, "const SCRIPT_VERSION = '99.0.0';")};
     h.host.fetch = async () => ({ok:true,text:async () => JSON.stringify(newer)});
     h.host.confirm = () => false;
     await h.api.checkForUpdate();

@@ -11,7 +11,7 @@
     'use strict';
 
     const SCRIPT_NAME = '常用 User 置顶';
-    const SCRIPT_VERSION = '1.1.0';
+    const SCRIPT_VERSION = '1.1.1';
     const SCRIPT_ID = '3e38034d-7bc2-489e-9e8c-32296e609f79';
     const UPDATE_BUTTON = '🔄 检查更新';
     const UPDATE_URL = 'https://raw.githubusercontent.com/koichole213-ui/tavern-pinned-user/main/pinned-user.json';
@@ -1112,8 +1112,9 @@
         }
     }
 
-    function destroy() {
+    function destroy({ refreshNative = true } = {}) {
         if (isDestroyed) return;
+        const hadPagination = Boolean(wrappedPagination);
         isDestroyed = true;
         hostWindow.clearInterval(maintenanceTimer);
         updateController?.abort();
@@ -1132,11 +1133,20 @@
         hostDocument.querySelectorAll('.hehe-persona-pin-badge').forEach(element => element.remove());
         hostDocument.querySelectorAll('.hehe-persona-is-pinned').forEach(element => element.classList.remove('hehe-persona-is-pinned'));
         if (hostWindow[INSTANCE_KEY]?.token === instanceToken) delete hostWindow[INSTANCE_KEY];
+        // 先撤掉排序包装器，再让酒馆按现有搜索、排序和分页设置重建列表。
+        // 直接触发宿主处理器，不把恢复工作留给即将卸载的脚本 iframe 定时器。
+        if (refreshNative && hadPagination) {
+            try {
+                if (personaUiReady()) host$('#persona_sort_order').trigger('input');
+            } catch {
+                console.warn(`[${SCRIPT_NAME}] 原生 User 列表暂未恢复，请重新打开人设面板。`);
+            }
+        }
     }
 
     async function initialise() {
         try {
-            hostWindow[INSTANCE_KEY]?.destroy?.();
+            hostWindow[INSTANCE_KEY]?.destroy?.({ refreshNative: false });
         } catch (error) {
             console.debug(`[${SCRIPT_NAME}] 清理上一份脚本实例时出现非致命错误。`, error);
         }
