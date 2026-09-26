@@ -1,65 +1,39 @@
 # 常用 User 置顶
 
-用于 SillyTavern 酒馆助手的全局脚本。把常用 User 人设按勾选顺序排在原生 Persona 列表最前面，保留原来的列表外观。
+酒馆助手全局脚本，把常用 User 按勾选顺序排到原生人设列表最前面。点击「📌 常用 User」选择并保存；停用后恢复原生排序。
 
-## 使用
+## 安装与更新
 
-- **📌 常用 User**：选择常用人设并保存。打开窗口、搜索、取消操作均不会自动删除已有置顶记录。
-- **🔄 检查更新**：手动从本仓库读取发布包。有更高版本时确认更新，直接更新原脚本，保留实际安装 ID、启用状态、脚本变量、自定义按钮和置顶记录。
-- 管理窗口顶部显示正在运行的版本。
+下载 [pinned-user.json](https://raw.githubusercontent.com/koichole213-ui/tavern-pinned-user/main/pinned-user.json)，导入全局脚本并启用。
 
-首次安装可下载 [pinned-user.json](https://raw.githubusercontent.com/koichole213-ui/tavern-pinned-user/main/pinned-user.json)，导入酒馆助手的全局脚本。
+从 1.2.0 起改为指定版本加载，不再提供「检查更新」按钮，也不依赖修改脚本库的接口。
 
-### 已安装 1.0.5，首次升级到支持在线更新的版本
+已有旧版时，可以编辑原脚本，将代码替换为 [loader.js](https://raw.githubusercontent.com/koichole213-ui/tavern-pinned-user/main/loader.js) 的全部内容，保存并重新启用。旧更新按钮自动移除，其他自定义按钮和置顶记录保留。
 
-旧版没有更新按钮，所以需要安装一次更新能力，无需删除旧脚本：
+以后有新版时，只修改入口顶部这一行，保存并重新启用：
 
-1. 打开酒馆助手的脚本库，编辑已有的「常用 User 置顶」。
-2. 将代码框内容替换为 [pinned-user.js](https://raw.githubusercontent.com/koichole213-ui/tavern-pinned-user/main/pinned-user.js) 的完整内容，保存。
-3. 若按钮未出现，将这份脚本关闭后重新启用；打开管理窗口核对顶部版本。
+```js
+const VERSION = '1.2.0';
+```
 
-此后直接点击「🔄 检查更新」。不需要手动编辑当前版本号，不需要删除脚本或重复导入。
-
-更新按钮要求酒馆助手提供 `getScriptId` 与 `updateScriptTreesWith`。缺少接口时会明确提示，不会尝试修改内部设置。脚本内容更新后是否立即重新运行由酒馆助手控制；若显示的版本未改变，关闭再启用这份脚本。
-
-## 修复范围
-
-- **v1.1.1**：停用脚本后主动恢复酒馆原生排序，无需刷新整个页面；保留置顶记录，重新启用仍可置顶。
-- 启动时先读到旧的本地记录，后来账号数据到达时仍能恢复正确的置顶。
-- 分页组件或页面晚到，也能接管；页面未就绪时不因十秒超时永久退出。
-- 排序同时更新酒馆计算页码使用的原数组，避免显示顺序与导航顺序不同。
-- 打开 User 面板及保存置顶时回到第一页，平常手动翻页不强制跳回。
-- 头像加载失败不取消勾选；被名称过滤或暂时未返回的人设不自动从记录中删除。
-- 保存记录成功但刷新失败时，会分别说明，不谎报列表刷新成功。
-- 停用或更新脚本时清理监听器和定时器，避免旧实例继续影响新实例。
+版本必须已经发布。管理窗口顶部显示实际运行版本；导入说明中的版本只是导入时的记录。只有 1.2.0 及以后版本支持此入口，不能填写 1.1.x。
 
 ## 网络与数据
 
-置顶保存沿用旧版的 `hehe_pinned_user_personas_v1`，不会修改 Persona 的名称、正文和头像。打开管理窗口或需要重建列表时，读取酒馆自己的头像接口。就绪巡检只检查本地状态，不定时抓取头像。
+启用时通过 jsDelivr 读取对应 GitHub 标签下的代码，不自动追随最新版。网络不可用或版本不存在时提示加载失败，不删除置顶记录；重新启用可重试，网络和 CDN 缓存仍会影响可用性。
 
-只有手动点击检查更新时才访问 GitHub Raw，且不发送酒馆账号凭据。该地址无法访问、响应异常或版本校验失败时，当前代码保持不变。正常更新只写回当前脚本的代码和说明，并补齐本脚本按钮。
+沿用旧版的 hehe_pinned_user_personas_v1 存储，只保存置顶头像 ID，不修改人设内容和头像。
 
-账号存储可用时优先使用账号记录；本地记录用于兼容旧版与临时回退。跨设备能否取得最新账号设置还受酒馆本身的同步与保存机制影响。
+## 版本
 
-## 维护与发布
+- 1.2.0：指定版本加载；删除更新按钮；说明文字改为「TA们」。
+- 1.1.1：停用后恢复原生排序。
+- 1.1.0：启动恢复、记录保留和分页修复。
 
-1. 修改 `pinned-user.js`，将 `SCRIPT_VERSION` 调整为新的三段数字版本，例如 `1.1.1`。
-2. 运行 `npm run build`。它同步 JSON 发布包、说明及 package 版本；只改版本不会产生任何功能修复。
-3. 运行 `npm test` 与 `node --check pinned-user.js`。
-4. 将源文件和生成的发布包一起发布到 `main`。客户端点击检查更新后才会取得新版本；仅本地改版本号不会发布。
+## 维护与验证
 
-`pinned-user.json` 是固定更新入口。不要改动脚本的发布标识 `SCRIPT_ID`。
+修改 pinned-user.js 的功能和 SCRIPT_VERSION 后，运行 npm run build、npm test、node --check pinned-user.js 与 node --check loader.js。
 
-## 验证边界
+构建同步 JSON、加载入口、说明、package 版本，并生成 pinned-user.module.js。发布时提交生成文件，创建并推送对应的 v版本号 标签。已发布标签不移动；仅改数字而不发布对应代码不能更新。
 
-自动测试覆盖迟到的账号记录、空置顶、未初始化存储、迟到的分页插件、排序与搜索隔离、版本比较、错误更新包、原位更新的数据保留、取消更新及网络失败。
-
-还在隔离浏览器的模拟酒馆页面验证了慢加载恢复、手动翻页、头像失败、隐藏记录保留，以及桌面和 390px 手机宽度。模拟测试不代表已在每个版本的真实酒馆完成验收。
-
-实际使用可检查：刷新酒馆后打开 User 面板，常用 User 在第一页最前面；手动翻第二页不会自行跳回；管理窗口取消后选择不丢失；检查更新时显示当前版本。
-
-## 上游接口
-
-- [酒馆助手脚本接口](https://github.com/N0VI028/JS-Slash-Runner/blob/main/%40types/function/script.d.ts)
-- [SillyTavern Persona 列表](https://github.com/SillyTavern/SillyTavern/blob/release/public/scripts/personas.js)
-- [SillyTavern 账号存储](https://github.com/SillyTavern/SillyTavern/blob/release/public/scripts/util/AccountStorage.js)
+测试覆盖存储、慢加载、停用恢复，以及隔离浏览器中的加载入口和按钮迁移。真实酒馆体验仍需实际验证。

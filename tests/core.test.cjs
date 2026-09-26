@@ -26,16 +26,19 @@ function boot(localIds = []) {
         getScriptId: () => 'installed-id',
         updateScriptTreesWith: updater => {updates++; return updater([{...pkg, id: 'installed-id'}]);},
     };
-    const injected = src.replace('    $(initialise);', `    globalThis.api = {readPinned, writePinned, reorderPersonas, patchPersonaPagination, maintain, destroy, compareVersions, validateUpdate, replaceOwnScript, checkForUpdate};`);
+    const injected = src.replace('    $(initialise);', `    globalThis.api = {readPinned, writePinned, reorderPersonas, patchPersonaPagination, maintain, destroy};`);
     vm.runInNewContext(injected, sandbox);
     return {api: sandbox.api, jq, host, context, local, storage, sandbox,
         setSearch: value => {search = value;}, counts: () => ({fetches, updates})};
 }
 test('release metadata and source versions agree', () => {
     new vm.Script(src);
-    assert.equal(pkg.content, src);
+    assert.match(pkg.content, /const VERSION =/);
+    assert.ok(!pkg.content.includes("updateScriptTreesWith"));
+    assert.equal(pkg.button.buttons.length, 1);
+    assert.ok(src.includes("勾选后，TA们"));
     assert.equal(pkg.version, JSON.parse(fs.readFileSync(path.join(root, 'package.json'))).version);
-    boot().api.validateUpdate(pkg);
+
 });
 test('late account data supersedes empty and stale local records', () => {
     for (const ids of [[], ['old.png']]) {
@@ -96,13 +99,6 @@ test('search order and other pagers remain unchanged', () => {
     h.jq.fn.pagination.call({is: () => false}, {dataSource: other});
     assert.deepEqual(other, ['a', 'p']);
 });
-test('version comparison is numeric and rejects malformed values', () => {
-    const {api} = boot();
-    assert.equal(api.compareVersions('1.10.0', '1.9.9'), 1);
-    assert.equal(api.compareVersions('1.1.0', '1.1.0'), 0);
-    assert.equal(api.compareVersions('1.0.5', '1.1.0'), -1);
-    assert.throws(() => api.compareVersions('v1.1', '1.1.0'));
-});
 test('disable restores native pagination before refreshing once, preserving pin storage', () => {
     const h = boot(['p.png']);
     let calls = 0;
@@ -130,54 +126,4 @@ test('instance handoff skips redundant native refresh', () => {
     h.api.patchPersonaPagination();
     h.api.destroy({refreshNative:false});
     assert.equal(calls, 0);
-});
-test('update only changes matching nested script and retains identity, data, switches and buttons', () => {
-    const {api} = boot();
-    const old = { ...pkg, id: 'installed', enabled: false, data: {mySetting: 42}, button: {enabled:false, buttons:[{name:'custom',visible:false}]} };
-    const other = {...pkg, id: 'unrelated'};
-    const trees = [{type:'folder', id:'folder', scripts:[old, other]}];
-    const next = api.replaceOwnScript(trees, 'installed', {...pkg, content:'new source'});
-    const updated = next[0].scripts[0];
-    assert.equal(updated.id, old.id);
-    assert.equal(updated.enabled, false);
-    assert.equal(updated.data, old.data);
-    assert.equal(updated.button.enabled, false);
-    assert.deepEqual(updated.button.buttons[0], old.button.buttons[0]);
-    assert.equal(next[0].scripts[1], other);
-    assert.equal(old.content, pkg.content);
-    assert.throws(() => api.replaceOwnScript(trees, 'missing', pkg));
-    assert.throws(() => api.replaceOwnScript([old, old], 'installed', pkg));
-});
-test('invalid identity or mismatched version is rejected before update', () => {
-    const {api} = boot();
-    assert.throws(() => api.validateUpdate({...pkg, id:'other'}));
-    assert.throws(() => api.validateUpdate({...pkg, version:'1.2.0'}));
-    assert.throws(() => api.validateUpdate({...pkg, content: pkg.content + '\n syntax error {'}));
-});
-test('equal or older versions cause no write', async () => {
-    const h = boot();
-    await h.api.checkForUpdate();
-    assert.deepEqual(h.counts(), {fetches:1, updates:0});
-    const older = {...pkg, version:'1.0.9', content: pkg.content.replace(`const SCRIPT_VERSION = '${pkg.version}';`, "const SCRIPT_VERSION = '1.0.9';")};
-    h.host.fetch = async () => ({ok:true, text:async () => JSON.stringify(older)});
-    await h.api.checkForUpdate();
-    assert.equal(h.counts().updates, 0);
-});
-test('network error, non-JSON, cancellation and destroyed instance cause no write', async () => {
-    const h = boot();
-    h.host.fetch = async () => {throw new Error('offline');};
-    await h.api.checkForUpdate();
-    h.host.fetch = async () => ({ok:true,text:async () => '<html>error</html>'});
-    await h.api.checkForUpdate();
-    const newer = {...pkg, version:'99.0.0', content: pkg.content.replace(`const SCRIPT_VERSION = '${pkg.version}';`, "const SCRIPT_VERSION = '99.0.0';")};
-    h.host.fetch = async () => ({ok:true,text:async () => JSON.stringify(newer)});
-    h.host.confirm = () => false;
-    await h.api.checkForUpdate();
-    assert.equal(h.counts().updates, 0);
-    h.host.confirm = () => true;
-    await h.api.checkForUpdate();
-    assert.equal(h.counts().updates, 1);
-    h.api.destroy();
-    await h.api.checkForUpdate();
-    assert.equal(h.counts().updates, 1);
 });
