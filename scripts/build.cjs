@@ -1,0 +1,18 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const source = fs.readFileSync(path.join(root, 'pinned-user.js'), 'utf8');
+const version = source.match(/const SCRIPT_VERSION = '(\d+\.\d+\.\d+)';/)?.[1];
+if (!version) throw new Error('Missing SCRIPT_VERSION');
+new (require('node:vm').Script)(source);
+const file = path.join(root, 'pinned-user.json');
+const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+pkg.content = source;
+pkg.version = version;
+pkg.info = pkg.info.replace(/^版本：[^\n]+/, `版本：${version}`);
+fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
+const manifestFile = path.join(root, 'package.json');
+const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
+manifest.version = version;
+fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + '\n');
+console.log(`Built v${version}`);
