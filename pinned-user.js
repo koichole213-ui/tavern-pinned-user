@@ -11,7 +11,7 @@
     'use strict';
 
     const SCRIPT_NAME = '常用 User 置顶';
-    const SCRIPT_VERSION = '1.2.0';
+    const SCRIPT_VERSION = '1.2.1';
     const BUTTON_NAME = '📌 常用 User';
     const STORAGE_KEY = 'hehe_pinned_user_personas_v1';
     const INSTANCE_KEY = '__hehePinnedUserPersonas';
@@ -895,13 +895,24 @@
         const search = overlay.querySelector('.hehe-pin-search');
         const count = overlay.querySelector('.hehe-pin-count');
 
+        function updateSelection() {
+            count.textContent = `已选 ${selected.length} 个`;
+            for (const card of list.querySelectorAll('.hehe-pin-card')) {
+                const order = selected.indexOf(card.dataset.personaId);
+                card.classList.toggle('is-selected', order !== -1);
+                card.setAttribute('aria-pressed', String(order !== -1));
+                card.querySelector('.hehe-pin-order').textContent = order === -1 ? '' : String(order + 1);
+            }
+        }
+
         function render() {
             const query = search.value.trim().toLocaleLowerCase();
             const visible = personas
                 .filter(persona => !query || `${persona.name}\n${persona.title}`.toLocaleLowerCase().includes(query))
                 .sort((a, b) => {
-                    const aOrder = selected.indexOf(a.id);
-                    const bOrder = selected.indexOf(b.id);
+                    // 本次打开期间固定按已保存的顺序显示，搜索也不采用尚未保存的勾选排序。
+                    const aOrder = savedPinned.indexOf(a.id);
+                    const bOrder = savedPinned.indexOf(b.id);
                     if (aOrder !== -1 || bOrder !== -1) {
                         if (aOrder === -1) return 1;
                         if (bOrder === -1) return -1;
@@ -968,7 +979,7 @@
                     const index = selected.indexOf(persona.id);
                     if (index === -1) selected.push(persona.id);
                     else selected.splice(index, 1);
-                    render();
+                    updateSelection();
                 });
                 list.append(card);
             }
@@ -978,7 +989,7 @@
         overlay.querySelector('.hehe-pin-cancel').addEventListener('click', closeManager);
         overlay.querySelector('.hehe-pin-clear').addEventListener('click', () => {
             selected.splice(0, selected.length);
-            render();
+            updateSelection();
         });
         overlay.querySelector('.hehe-pin-save').addEventListener('click', async () => {
             const saved = writePinned(selected);
