@@ -1,6 +1,6 @@
 // 更新时只修改下面的版本号，保存并重新启用脚本。
 // 版本须已发布，例如 1.2.0。置顶记录仍保存在原来的位置。
-const VERSION = '1.2.1';
+const VERSION = '1.2.2';
 
 (() => {
     const host = window.parent && window.parent !== window ? window.parent : window;

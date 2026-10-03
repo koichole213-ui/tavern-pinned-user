@@ -1,7 +1,7 @@
 {
   "name": "tavern-pinned-user",
   "private": true,
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "SillyTavern 酒馆助手常用 User 置顶脚本",
   "scripts": {
     "build": "node scripts/build.cjs",

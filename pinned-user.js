@@ -11,7 +11,7 @@
     'use strict';
 
     const SCRIPT_NAME = '常用 User 置顶';
-    const SCRIPT_VERSION = '1.2.1';
+    const SCRIPT_VERSION = '1.2.2';
     const BUTTON_NAME = '📌 常用 User';
     const STORAGE_KEY = 'hehe_pinned_user_personas_v1';
     const INSTANCE_KEY = '__hehePinnedUserPersonas';
@@ -829,10 +829,10 @@
         const target = event.target?.closest?.('#persona-management-button .drawer-icon');
         if (!target || isDestroyed) return;
         const content = hostDocument.querySelector('#persona-management-button .drawer-content');
-        // 捕获阶段判断是否正在打开；翻页、选择 User 和关闭面板都不强制回第一页。
+        // 普通重开只检查就绪状态；不重建列表，让酒馆保留当前页码与滚动位置。
+        // 首次接管或记录变化仍由 maintain 处理，保存置顶仍主动回第一页。
         if (!content?.classList.contains('openDrawer')) {
             maintain();
-            void refreshPersonaList(true);
         }
     }
 
